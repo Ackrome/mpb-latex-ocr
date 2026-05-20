@@ -260,7 +260,32 @@ Metrics currently include:
 - exact match
 - normalized edit distance
 
-These are baseline metrics. For serious formula OCR, add render-aware metrics later.
+Enable render-aware proxy metrics:
+
+```powershell
+latex-ocr-evaluate `
+  --checkpoint outputs/baseline/checkpoints/YOUR_CHECKPOINT.ckpt `
+  --manifest data/toy/manifest.csv `
+  --image-root data/toy `
+  --tokenizer outputs/baseline/tokenizer.json `
+  --split test `
+  --render-metric `
+  --predictions-out outputs/baseline/test_predictions.jsonl `
+  --cdm-json-out outputs/baseline/cdm_predictions.json
+```
+
+Render-aware output metrics:
+
+- `render_iou_with_failures`: pixel-mask IoU after rendering prediction and target
+- `render_f1_with_failures`: pixel-mask Dice/F1 after rendering prediction and target
+- `render_match`: share of samples with render F1 at or above `--render-match-threshold`
+- `prediction_render_success`: share of predictions that Matplotlib mathtext could render
+- `target_render_success`: share of targets that Matplotlib mathtext could render
+- `pair_render_success`: share of samples where both prediction and target rendered
+
+This is a practical render-aware proxy, not official CDM. It is useful for fast local/Kaggle evaluation because it catches visually equivalent strings better than edit distance and penalizes invalid LaTeX that cannot render.
+
+For official CDM-style reporting, use `--cdm-json-out` to export a JSON list with `img_id`, `gt`, and `pred` records. Run the official CDM tooling on that file in an environment with its rendering dependencies. Keep both scores in reports: string metrics for debugging, render proxy for quick model selection, and official CDM for final benchmark claims.
 
 ## Feature: Single-Image Prediction
 
