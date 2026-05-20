@@ -1,0 +1,17 @@
+paths:
+  output_dir: /content/latex-ocr-runs/baseline
+  tokenizer_path: /content/latex-ocr-runs/baseline/tokenizer.json
+
+data:
+  batch_size: 16
+  num_workers: 2
+
+trainer:
+  accelerator: gpu
+  devices: 1
+  precision: 16-mixed
+  accumulate_grad_batches: 2
+
+mlflow:
+  tracking_uri: file:/content/mlruns
+  experiment_name: latex-ocr-colab

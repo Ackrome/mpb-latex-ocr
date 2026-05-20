@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mpb-latex-ocr"
+version = "0.1.0"
+description = "PyTorch Lightning and MLflow scaffold for LaTeX equation OCR."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "torch>=2.7,<2.12",
+  "lightning>=2.5",
+  "mlflow>=3.0",
+  "omegaconf>=2.3",
+  "pillow>=10.0",
+  "matplotlib>=3.8",
+  "numpy>=1.26",
+  "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.8",
+]
+
+[project.scripts]
+latex-ocr-train = "mpb_latex_ocr.train:main"
+latex-ocr-evaluate = "mpb_latex_ocr.evaluate:main"
+latex-ocr-predict = "mpb_latex_ocr.predict:main"
+latex-ocr-make-toy-data = "mpb_latex_ocr.make_toy_data:main"
+latex-ocr-prepare-manifest = "mpb_latex_ocr.prepare_manifest:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

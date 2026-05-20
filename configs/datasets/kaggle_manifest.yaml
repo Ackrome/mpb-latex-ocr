@@ -1,0 +1,3 @@
+paths:
+  manifest: /kaggle/working/latex-ocr-manifest.csv
+  image_root: null

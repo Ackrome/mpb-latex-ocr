@@ -1,0 +1,63 @@
+seed: 42
+
+paths:
+  manifest: data/toy/manifest.csv
+  image_root: data/toy
+  output_dir: outputs/baseline
+  tokenizer_path: outputs/baseline/tokenizer.json
+
+tokenizer:
+  min_freq: 1
+  max_vocab_size: null
+  force_rebuild: false
+
+data:
+  image_height: 128
+  image_width: 512
+  batch_size: 16
+  num_workers: 2
+  max_label_length: 256
+  augment: true
+
+model:
+  d_model: 256
+  encoder_channels: [32, 64, 128]
+  decoder_layers: 4
+  nhead: 8
+  dim_feedforward: 1024
+  dropout: 0.1
+  max_seq_len: 256
+
+optimizer:
+  lr: 0.0003
+  weight_decay: 0.01
+  scheduler: cosine
+  warmup_fraction: 0.05
+
+generation:
+  max_length: 256
+  validation_batches: 4
+
+trainer:
+  accelerator: auto
+  devices: auto
+  precision: bf16-mixed
+  max_epochs: 20
+  accumulate_grad_batches: 1
+  gradient_clip_val: 1.0
+  log_every_n_steps: 10
+  deterministic: false
+  limit_train_batches: null
+  limit_val_batches: null
+
+callbacks:
+  monitor: val_norm_edit_distance
+  mode: min
+  save_top_k: 3
+  early_stopping: true
+  patience: 8
+
+mlflow:
+  tracking_uri: file:./mlruns
+  experiment_name: latex-ocr-local
+  autolog: true

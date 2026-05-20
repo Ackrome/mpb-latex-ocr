@@ -1,0 +1,14 @@
+paths:
+  output_dir: /kaggle/working/latex-ocr-runs/baseline
+  tokenizer_path: /kaggle/working/latex-ocr-runs/baseline/tokenizer.json
+
+data:
+  batch_size: 16
+  num_workers: 2
+
+trainer:
+  precision: 16-mixed
+  accumulate_grad_batches: 2
+
+mlflow:
+  tracking_uri: file:/kaggle/working/mlruns
