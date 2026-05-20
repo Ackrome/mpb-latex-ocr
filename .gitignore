@@ -7,6 +7,7 @@ __pycache__/
 *.egg-info/
 
 data/
+!src/mpb_latex_ocr/data
 outputs/
 mlruns/
 wandb/
