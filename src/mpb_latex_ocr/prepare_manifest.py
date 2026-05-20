@@ -6,11 +6,10 @@ import argparse
 import csv
 import json
 import random
+import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Iterable
-
-from mpb_latex_ocr.data.latex_normalize import normalize_latex
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 IMAGE_COLUMNS = (
@@ -49,6 +48,7 @@ SPLIT_ALIASES = {
     "testing": "test",
     "te": "test",
 }
+COMMENT_RE = re.compile(r"(?<!\\)%.*")
 
 
 @dataclass(frozen=True)
@@ -481,6 +481,37 @@ def normalize_split(value: str | None) -> str | None:
         return None
     normalized = str(value).strip().lower()
     return SPLIT_ALIASES.get(normalized)
+
+
+def normalize_latex(text: str) -> str:
+    """Small self-contained target normalizer for manifest preparation.
+
+    Keep this duplicated locally so `latex-ocr-prepare-manifest` can run even in
+    minimal Kaggle import states before the full training package is imported.
+    """
+
+    value = str(text)
+    value = value.replace("\r\n", "\n").replace("\r", "\n")
+    value = value.replace("\u2212", "-")
+    value = "\n".join(COMMENT_RE.sub("", line) for line in value.splitlines())
+
+    replacements = {
+        "\\displaystyle": "",
+        "\\textstyle": "",
+        "\\scriptstyle": "",
+        "\\scriptscriptstyle": "",
+        "\\dfrac": "\\frac",
+        "\\tfrac": "\\frac",
+        "\\left": "",
+        "\\right": "",
+    }
+    for old, new in replacements.items():
+        value = value.replace(old, new)
+
+    value = re.sub(r"\s+", " ", value).strip()
+    value = re.sub(r"\s*([{}_^=+\-*/(),\[\]])\s*", r"\1", value)
+    value = re.sub(r"(\\[A-Za-z]+)\s+(?=[{}_^=+\-*/(),\[\]])", r"\1", value)
+    return re.sub(r"\s+", " ", value).strip()
 
 
 def _parse_im2latex_split_line(

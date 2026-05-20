@@ -32,7 +32,9 @@ print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU")
 For Kaggle, install the package after uploading or cloning the repo, then use the Kaggle hardware config:
 
 ```bash
-pip install -e .
+export PYTHONPATH=/kaggle/working/mpb-latex-ocr/src:$PYTHONPATH
+pip install --force-reinstall --no-deps -e ".[dev]"
+pip install lightning mlflow omegaconf pillow matplotlib numpy tqdm pytest
 ```
 
 Kaggle datasets are mounted read-only under `/kaggle/input`. Training outputs should go under `/kaggle/working` so Kaggle saves them as notebook artifacts.
@@ -178,7 +180,7 @@ Common auto-detected formats:
 Example for an attached Kaggle dataset:
 
 ```bash
-latex-ocr-prepare-manifest \
+python -m mpb_latex_ocr.prepare_manifest \
   --input-root /kaggle/input/im2latex-230k/PRINTED_TEX_230k \
   --output /kaggle/working/latex-ocr-manifest.csv \
   --format auto \
@@ -193,7 +195,7 @@ latex-ocr-prepare-manifest \
 Then train against the generated manifest:
 
 ```bash
-latex-ocr-train \
+python -m mpb_latex_ocr.train \
   --config configs/train.yaml \
   --config configs/hardware/kaggle.yaml \
   --config configs/datasets/kaggle_manifest.yaml \
@@ -203,7 +205,7 @@ latex-ocr-train \
 If auto-detection picks the wrong metadata file, specify the table columns:
 
 ```bash
-latex-ocr-prepare-manifest \
+python -m mpb_latex_ocr.prepare_manifest \
   --input-root /kaggle/input/YOUR_DATASET \
   --output /kaggle/working/latex-ocr-manifest.csv \
   --format table \
@@ -213,6 +215,8 @@ latex-ocr-prepare-manifest \
   --split-col split \
   --absolute-paths
 ```
+
+If Kaggle raises `ModuleNotFoundError` after you update the repo, rerun the install cell. The notebook also sets `PYTHONPATH=/kaggle/working/mpb-latex-ocr/src` and uses `python -m ...` commands so it picks up the current working copy rather than a stale console entry point.
 
 ## Feature: Kaggle Training Notebook
 
