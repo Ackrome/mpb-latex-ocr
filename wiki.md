@@ -35,6 +35,7 @@ For Kaggle, install the package after uploading or cloning the repo, then use th
 export PYTHONPATH=/kaggle/working/mpb-latex-ocr/src:$PYTHONPATH
 pip install --force-reinstall --no-deps -e ".[dev]"
 pip install lightning mlflow omegaconf pillow matplotlib numpy tqdm pytest
+python scripts/kaggle_preflight.py
 ```
 
 Kaggle datasets are mounted read-only under `/kaggle/input`. Training outputs should go under `/kaggle/working` so Kaggle saves them as notebook artifacts.
@@ -216,7 +217,15 @@ python -m mpb_latex_ocr.prepare_manifest \
   --absolute-paths
 ```
 
-If Kaggle raises `ModuleNotFoundError` after you update the repo, rerun the install cell. The notebook also sets `PYTHONPATH=/kaggle/working/mpb-latex-ocr/src` and uses `python -m ...` commands so it picks up the current working copy rather than a stale console entry point.
+If Kaggle raises `ModuleNotFoundError` after you update the repo, run:
+
+```bash
+cd /kaggle/working/mpb-latex-ocr
+find src/mpb_latex_ocr -maxdepth 2 -type f | sort
+python scripts/kaggle_preflight.py
+```
+
+If `src/mpb_latex_ocr/data/__init__.py` is missing, Kaggle is using an incomplete or stale project copy. Delete `/kaggle/working/mpb-latex-ocr`, clone or upload the current repo again, and rerun the install cell. The notebook also sets `PYTHONPATH=/kaggle/working/mpb-latex-ocr/src` and uses `python -m ...` commands so it picks up the current working copy rather than a stale console entry point.
 
 ## Feature: Kaggle Training Notebook
 
