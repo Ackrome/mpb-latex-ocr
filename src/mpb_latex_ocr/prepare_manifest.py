@@ -7,9 +7,13 @@ import csv
 import json
 import random
 import re
+import xml.etree.ElementTree as ET
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
+
+from PIL import Image, ImageDraw
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 IMAGE_COLUMNS = (
@@ -67,11 +71,15 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--output", required=True, help="Output CSV manifest path.")
     parser.add_argument(
         "--format",
-        choices=["auto", "table", "paired-files", "im2latex-lst"],
+        choices=["auto", "table", "paired-files", "im2latex-lst", "mathwriting-inkml"],
         default="auto",
         help="Input format. Use auto for common Kaggle datasets.",
     )
-    parser.add_argument("--table-path", default=None, help="Specific CSV/TSV/JSON/JSONL metadata file.")
+    parser.add_argument(
+        "--table-path",
+        default=None,
+        help="Specific CSV/TSV/JSON/JSONL metadata file.",
+    )
     parser.add_argument("--image-col", default=None, help="Image column for table inputs.")
     parser.add_argument("--latex-col", default=None, help="LaTeX label column for table inputs.")
     parser.add_argument("--split-col", default=None, help="Split column for table inputs.")
@@ -79,6 +87,19 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--val-fraction", type=float, default=0.05)
     parser.add_argument("--test-fraction", type=float, default=0.05)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--render-dir",
+        default=None,
+        help="Directory for rendered MathWriting InkML PNGs.",
+    )
+    parser.add_argument("--mathwriting-image-width", type=int, default=1024)
+    parser.add_argument("--mathwriting-image-height", type=int, default=256)
+    parser.add_argument("--mathwriting-stroke-width", type=int, default=4)
+    parser.add_argument(
+        "--mathwriting-include-symbols",
+        action="store_true",
+        help="Include single-symbol MathWriting examples in addition to expressions.",
+    )
     parser.add_argument(
         "--absolute-paths",
         action="store_true",
@@ -99,6 +120,11 @@ def main(argv: list[str] | None = None) -> None:
         test_fraction=args.test_fraction,
         seed=args.seed,
         absolute_paths=args.absolute_paths,
+        render_dir=Path(args.render_dir) if args.render_dir else None,
+        mathwriting_image_width=args.mathwriting_image_width,
+        mathwriting_image_height=args.mathwriting_image_height,
+        mathwriting_stroke_width=args.mathwriting_stroke_width,
+        mathwriting_include_symbols=args.mathwriting_include_symbols,
     )
     counts = _split_counts(rows)
     print(f"Wrote {len(rows)} rows to {args.output}")
@@ -118,13 +144,18 @@ def prepare_manifest(
     test_fraction: float = 0.05,
     seed: int = 42,
     absolute_paths: bool = False,
+    render_dir: Path | None = None,
+    mathwriting_image_width: int = 1024,
+    mathwriting_image_height: int = 256,
+    mathwriting_stroke_width: int = 4,
+    mathwriting_include_symbols: bool = False,
 ) -> list[ManifestRow]:
     input_root = input_root.resolve()
     if not input_root.exists():
         raise FileNotFoundError(f"Input root does not exist: {input_root}")
 
     image_index = build_image_index(input_root)
-    if not image_index:
+    if not image_index and input_format not in {"auto", "mathwriting-inkml"}:
         raise ValueError(f"No image files found under {input_root}")
 
     rows = _load_rows(
@@ -135,6 +166,11 @@ def prepare_manifest(
         image_col=image_col,
         latex_col=latex_col,
         split_col=split_col,
+        render_dir=render_dir or output_path.parent / f"{output_path.stem}_images",
+        mathwriting_image_width=mathwriting_image_width,
+        mathwriting_image_height=mathwriting_image_height,
+        mathwriting_stroke_width=mathwriting_stroke_width,
+        mathwriting_include_symbols=mathwriting_include_symbols,
     )
     if not rows:
         raise ValueError(f"No usable image/LaTeX pairs found under {input_root}")
@@ -158,6 +194,11 @@ def _load_rows(
     image_col: str | None,
     latex_col: str | None,
     split_col: str | None,
+    render_dir: Path,
+    mathwriting_image_width: int,
+    mathwriting_image_height: int,
+    mathwriting_stroke_width: int,
+    mathwriting_include_symbols: bool,
 ) -> list[ManifestRow]:
     errors: list[str] = []
     loaders = {
@@ -171,12 +212,20 @@ def _load_rows(
             split_col=split_col,
         ),
         "im2latex-lst": lambda: rows_from_im2latex_lst(input_root, image_index),
+        "mathwriting-inkml": lambda: rows_from_mathwriting_inkml(
+            input_root,
+            render_dir=render_dir,
+            image_width=mathwriting_image_width,
+            image_height=mathwriting_image_height,
+            stroke_width=mathwriting_stroke_width,
+            include_symbols=mathwriting_include_symbols,
+        ),
     }
 
     if input_format != "auto":
         return loaders[input_format]()
 
-    for name in ("paired-files", "table", "im2latex-lst"):
+    for name in ("paired-files", "table", "im2latex-lst", "mathwriting-inkml"):
         try:
             rows = loaders[name]()
         except Exception as exc:  # Keep auto-detection moving across known formats.
@@ -208,7 +257,10 @@ def build_image_index(root: Path) -> dict[str, Path]:
 
 
 def rows_from_paired_files(input_root: Path, image_index: dict[str, Path]) -> list[ManifestRow]:
-    image_list = _find_first(input_root, ("corresponding_png_images.txt", "image_names.txt", "images.txt"))
+    image_list = _find_first(
+        input_root,
+        ("corresponding_png_images.txt", "image_names.txt", "images.txt"),
+    )
     formula_list = _find_first(input_root, ("final_png_formulas.txt", "formulas.txt", "labels.txt"))
     if image_list is None or formula_list is None:
         return []
@@ -345,6 +397,99 @@ def rows_from_im2latex_lst(input_root: Path, image_index: dict[str, Path]) -> li
     return rows
 
 
+def rows_from_mathwriting_inkml(
+    input_root: Path,
+    render_dir: Path,
+    image_width: int = 1024,
+    image_height: int = 256,
+    stroke_width: int = 4,
+    include_symbols: bool = False,
+) -> list[ManifestRow]:
+    inkml_files = sorted(input_root.rglob("*.inkml"))
+    if not inkml_files:
+        return []
+
+    render_dir.mkdir(parents=True, exist_ok=True)
+    rows: list[ManifestRow] = []
+    for index, inkml_path in enumerate(inkml_files):
+        split = _mathwriting_split(inkml_path, input_root)
+        if split is None:
+            continue
+        if _is_mathwriting_symbol(inkml_path, input_root) and not include_symbols:
+            continue
+
+        latex, strokes = parse_mathwriting_inkml(inkml_path)
+        if not latex or not strokes:
+            continue
+
+        sample_id = str(inkml_path.relative_to(input_root)).replace("\\", "/")
+        image_path = render_dir / split / f"{inkml_path.stem}.png"
+        render_ink_strokes(
+            strokes,
+            image_path=image_path,
+            image_width=image_width,
+            image_height=image_height,
+            stroke_width=stroke_width,
+        )
+        rows.append(
+            ManifestRow(
+                image_path=image_path,
+                latex=normalize_latex(latex),
+                split=split,
+                sample_id=sample_id,
+            )
+        )
+        if index and index % 5000 == 0:
+            print(f"Rendered {len(rows)} MathWriting examples...")
+    return rows
+
+
+def parse_mathwriting_inkml(path: Path) -> tuple[str | None, list[list[tuple[float, float]]]]:
+    root = ET.parse(path).getroot()
+    label = _mathwriting_label(root)
+    strokes: list[list[tuple[float, float]]] = []
+    for trace in root.iter():
+        if _local_name(trace.tag) != "trace":
+            continue
+        points = _parse_trace_points(trace.text or "")
+        if len(points) >= 2:
+            strokes.append(points)
+    return label, strokes
+
+
+def render_ink_strokes(
+    strokes: list[list[tuple[float, float]]],
+    image_path: Path,
+    image_width: int,
+    image_height: int,
+    stroke_width: int,
+) -> None:
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    canvas = Image.new("L", (int(image_width), int(image_height)), color=255)
+    draw = ImageDraw.Draw(canvas)
+    all_points = [point for stroke in strokes for point in stroke]
+    min_x = min(point[0] for point in all_points)
+    max_x = max(point[0] for point in all_points)
+    min_y = min(point[1] for point in all_points)
+    max_y = max(point[1] for point in all_points)
+    raw_width = max(1.0, max_x - min_x)
+    raw_height = max(1.0, max_y - min_y)
+    padding = max(8, stroke_width * 3)
+    scale = min((image_width - 2 * padding) / raw_width, (image_height - 2 * padding) / raw_height)
+    offset_x = (image_width - raw_width * scale) / 2.0 - min_x * scale
+    offset_y = (image_height - raw_height * scale) / 2.0 - min_y * scale
+
+    for stroke in strokes:
+        transformed = [(x * scale + offset_x, y * scale + offset_y) for x, y in stroke]
+        if len(transformed) == 1:
+            x, y = transformed[0]
+            radius = max(1, stroke_width // 2)
+            draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=0)
+        else:
+            draw.line(transformed, fill=0, width=max(1, int(stroke_width)), joint="curve")
+    canvas.save(image_path)
+
+
 def read_table_records(path: Path) -> Iterable[dict[str, Any]]:
     suffix = path.suffix.lower()
     if suffix in {".csv", ".tsv"}:
@@ -430,7 +575,10 @@ def write_manifest(
             if absolute_paths:
                 image_value = str(image_path)
             else:
-                image_value = str(image_path.relative_to(input_root)).replace("\\", "/")
+                try:
+                    image_value = str(image_path.relative_to(input_root)).replace("\\", "/")
+                except ValueError:
+                    image_value = str(image_path)
             writer.writerow(
                 {
                     "image_path": image_value,
@@ -441,7 +589,11 @@ def write_manifest(
             )
 
 
-def resolve_image_path(raw_value: str, input_root: Path, image_index: dict[str, Path]) -> Path | None:
+def resolve_image_path(
+    raw_value: str,
+    input_root: Path,
+    image_index: dict[str, Path],
+) -> Path | None:
     raw_value = raw_value.strip().strip('"').strip("'")
     if not raw_value:
         return None
@@ -474,6 +626,64 @@ def resolve_image_path(raw_value: str, input_root: Path, image_index: dict[str, 
         if key.lower() in image_index:
             return image_index[key.lower()]
     return None
+
+
+def _mathwriting_label(root: ET.Element) -> str | None:
+    fallback: str | None = None
+    for element in root.iter():
+        if _local_name(element.tag) != "annotation":
+            continue
+        text = (element.text or "").strip()
+        if not text:
+            continue
+        annotation_type = str(element.attrib.get("type", "")).lower()
+        if annotation_type == "normalizedlabel":
+            return text
+        if annotation_type in {"label", "truth"} or fallback is None:
+            fallback = text
+    return fallback
+
+
+def _parse_trace_points(text: str) -> list[tuple[float, float]]:
+    points: list[tuple[float, float]] = []
+    chunks = [chunk.strip() for chunk in text.replace("\n", " ").split(",") if chunk.strip()]
+    if len(chunks) > 1:
+        for chunk in chunks:
+            values = _numbers_from_text(chunk)
+            if len(values) >= 2:
+                points.append((values[0], values[1]))
+        return points
+
+    values = _numbers_from_text(text)
+    if len(values) < 2:
+        return points
+    stride = 3 if len(values) % 3 == 0 else 2
+    for index in range(0, len(values) - 1, stride):
+        points.append((values[index], values[index + 1]))
+    return points
+
+
+def _numbers_from_text(text: str) -> list[float]:
+    return [float(value) for value in re.findall(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)", text)]
+
+
+def _mathwriting_split(path: Path, input_root: Path) -> str | None:
+    parts = [part.lower() for part in path.relative_to(input_root).parts[:-1]]
+    if "valid" in parts or "validation" in parts or "val" in parts:
+        return "val"
+    if "test" in parts:
+        return "test"
+    if "train" in parts or "synthetic" in parts:
+        return "train"
+    return None
+
+
+def _is_mathwriting_symbol(path: Path, input_root: Path) -> bool:
+    return "symbols" in {part.lower() for part in path.relative_to(input_root).parts[:-1]}
+
+
+def _local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
 
 
 def normalize_split(value: str | None) -> str | None:
@@ -555,7 +765,13 @@ def _candidate_table_paths(input_root: Path) -> list[Path]:
     paths: list[Path] = []
     for suffix in ("*.csv", "*.tsv", "*.jsonl", "*.json"):
         paths.extend(input_root.rglob(suffix))
-    paths.sort(key=lambda path: (path.name.lower().startswith(("vocab", "map")), len(path.parts), path.name))
+    paths.sort(
+        key=lambda path: (
+            path.name.lower().startswith(("vocab", "map")),
+            len(path.parts),
+            path.name,
+        )
+    )
     return paths
 
 

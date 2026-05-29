@@ -11,7 +11,7 @@ from typing import Any
 
 import numpy as np
 import torch
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageFilter
 from torch.utils.data import Dataset
 
 from mpb_latex_ocr.data.latex_normalize import normalize_latex
@@ -29,10 +29,19 @@ class FormulaSample:
 class FormulaImageTransform:
     """Resize with aspect preservation, pad to a fixed canvas, and normalize."""
 
-    def __init__(self, height: int, width: int, augment: bool = False):
+    def __init__(
+        self,
+        height: int,
+        width: int,
+        augment: bool = False,
+        augmentation_profile: str = "printed",
+        augmentation_strength: float = 1.0,
+    ):
         self.height = int(height)
         self.width = int(width)
         self.augment = bool(augment)
+        self.augmentation_profile = str(augmentation_profile)
+        self.augmentation_strength = max(0.0, float(augmentation_strength))
 
     def __call__(self, image: Image.Image) -> torch.Tensor:
         image = image.convert("L")
@@ -51,17 +60,51 @@ class FormulaImageTransform:
         return torch.from_numpy(array).unsqueeze(0)
 
     def _augment(self, image: Image.Image) -> Image.Image:
+        strength = self.augmentation_strength
         if random.random() < 0.35:
-            image = ImageEnhance.Contrast(image).enhance(random.uniform(0.75, 1.35))
+            image = ImageEnhance.Contrast(image).enhance(
+                random.uniform(1.0 - 0.25 * strength, 1.0 + 0.35 * strength)
+            )
         if random.random() < 0.25:
-            image = ImageEnhance.Brightness(image).enhance(random.uniform(0.85, 1.15))
+            image = ImageEnhance.Brightness(image).enhance(
+                random.uniform(1.0 - 0.15 * strength, 1.0 + 0.15 * strength)
+            )
         if random.random() < 0.20:
             image = image.rotate(
-                random.uniform(-1.5, 1.5),
+                random.uniform(-1.5 * strength, 1.5 * strength),
                 resample=Image.Resampling.BICUBIC,
                 expand=True,
                 fillcolor=255,
             )
+        if self.augmentation_profile == "handwriting":
+            image = self._augment_handwriting(image)
+        return image
+
+    def _augment_handwriting(self, image: Image.Image) -> Image.Image:
+        strength = self.augmentation_strength
+        if random.random() < 0.35:
+            shear_x = random.uniform(-0.06 * strength, 0.06 * strength)
+            shear_y = random.uniform(-0.02 * strength, 0.02 * strength)
+            translate_x = random.uniform(-2.0 * strength, 2.0 * strength)
+            translate_y = random.uniform(-2.0 * strength, 2.0 * strength)
+            image = image.transform(
+                image.size,
+                Image.Transform.AFFINE,
+                (1.0, shear_x, translate_x, shear_y, 1.0, translate_y),
+                resample=Image.Resampling.BICUBIC,
+                fillcolor=255,
+            )
+        if random.random() < 0.20:
+            image = image.filter(ImageFilter.MinFilter(3))
+        elif random.random() < 0.15:
+            image = image.filter(ImageFilter.MaxFilter(3))
+        if random.random() < 0.20:
+            blur_radius = random.uniform(0.15, 0.5) * strength
+            image = image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+        if random.random() < 0.25:
+            array = np.asarray(image, dtype=np.float32)
+            noise = np.random.normal(0.0, 4.0 * strength, size=array.shape)
+            image = Image.fromarray(np.clip(array + noise, 0, 255).astype(np.uint8), mode="L")
         return image
 
 
@@ -75,12 +118,20 @@ class LatexFormulaDataset(Dataset[dict[str, Any]]):
         image_width: int,
         max_label_length: int,
         augment: bool = False,
+        augmentation_profile: str = "printed",
+        augmentation_strength: float = 1.0,
     ):
         self.samples = samples
         self.tokenizer = tokenizer
         self.image_root = Path(image_root) if image_root else None
         self.max_label_length = max_label_length
-        self.transform = FormulaImageTransform(image_height, image_width, augment=augment)
+        self.transform = FormulaImageTransform(
+            image_height,
+            image_width,
+            augment=augment,
+            augmentation_profile=augmentation_profile,
+            augmentation_strength=augmentation_strength,
+        )
 
     def __len__(self) -> int:
         return len(self.samples)

@@ -153,7 +153,11 @@ def crop_mask(mask: np.ndarray) -> np.ndarray:
     return mask[ys.min() : ys.max() + 1, xs.min() : xs.max() + 1]
 
 
-def align_masks(left: np.ndarray, right: np.ndarray, padding: int = 4) -> tuple[np.ndarray, np.ndarray]:
+def align_masks(
+    left: np.ndarray,
+    right: np.ndarray,
+    padding: int = 4,
+) -> tuple[np.ndarray, np.ndarray]:
     height = int(max(left.shape[0], right.shape[0]) + 2 * padding)
     width = int(max(left.shape[1], right.shape[1]) + 2 * padding)
     left_canvas = np.zeros((height, width), dtype=bool)

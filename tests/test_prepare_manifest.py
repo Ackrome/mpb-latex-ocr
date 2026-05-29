@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from PIL import Image
+
 from mpb_latex_ocr.prepare_manifest import prepare_manifest
 
 
@@ -47,3 +49,49 @@ def test_prepare_manifest_from_table_file(tmp_path: Path):
     assert len(rows) == 1
     assert "paper/sample.jpeg" in text
     assert "test" in text
+
+
+def test_prepare_manifest_from_mathwriting_inkml_renders_images(tmp_path: Path):
+    root = tmp_path / "mathwriting"
+    train = root / "train"
+    valid = root / "valid"
+    train.mkdir(parents=True)
+    valid.mkdir(parents=True)
+    (train / "a.inkml").write_text(
+        """<ink xmlns="http://www.w3.org/2003/InkML">
+  <annotation type="normalizedLabel">x ^ 2</annotation>
+  <trace id="0">0 0, 10 10, 20 0</trace>
+</ink>
+""",
+        encoding="utf-8",
+    )
+    (valid / "b.inkml").write_text(
+        """<ink>
+  <annotation type="normalizedLabel">\\frac { a } { b }</annotation>
+  <trace>0 10, 5 0, 10 10</trace>
+</ink>
+""",
+        encoding="utf-8",
+    )
+
+    output = tmp_path / "manifest.csv"
+    render_dir = tmp_path / "rendered"
+    rows = prepare_manifest(
+        input_root=root,
+        output_path=output,
+        input_format="auto",
+        render_dir=render_dir,
+        val_fraction=0.0,
+        test_fraction=0.0,
+        mathwriting_image_width=128,
+        mathwriting_image_height=64,
+    )
+
+    text = output.read_text(encoding="utf-8")
+    assert len(rows) == 2
+    assert "x^2" in text
+    assert "\\frac{a}{b}" in text
+    assert rows[0].image_path.exists()
+    assert rows[1].split == "val"
+    with Image.open(rows[0].image_path) as image:
+        assert image.size == (128, 64)

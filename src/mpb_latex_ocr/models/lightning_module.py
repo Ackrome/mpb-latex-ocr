@@ -132,7 +132,7 @@ class LatexOCRModule(L.LightningModule):
         max_length = int(self.generation_config.get("max_length", self.model.max_seq_len))
         generated_ids = self.model.generate(batch["pixel_values"], max_length=max_length)
         predictions = [self.tokenizer.decode(row.tolist()) for row in generated_ids]
-        targets = [self.tokenizer.decode(row.tolist()) for row in batch["labels"]]
+        targets = [normalize_latex(text) for text in batch["latex"]]
 
         exact_values: list[float] = []
         edit_values: list[float] = []

@@ -29,6 +29,8 @@ class LatexOCRDataModule(L.LightningDataModule):
         num_workers: int = 2,
         max_label_length: int = 256,
         augment: bool = True,
+        augmentation_profile: str = "printed",
+        augmentation_strength: float = 1.0,
     ):
         super().__init__()
         self.manifest_path = Path(manifest_path)
@@ -40,6 +42,8 @@ class LatexOCRDataModule(L.LightningDataModule):
         self.num_workers = num_workers
         self.max_label_length = max_label_length
         self.augment = augment
+        self.augmentation_profile = augmentation_profile
+        self.augmentation_strength = augmentation_strength
 
         self.train_dataset: LatexFormulaDataset | None = None
         self.val_dataset: LatexFormulaDataset | None = None
@@ -59,6 +63,8 @@ class LatexOCRDataModule(L.LightningDataModule):
             image_width=self.image_width,
             max_label_length=self.max_label_length,
             augment=self.augment,
+            augmentation_profile=self.augmentation_profile,
+            augmentation_strength=self.augmentation_strength,
         )
         self.val_dataset = LatexFormulaDataset(
             val_samples,

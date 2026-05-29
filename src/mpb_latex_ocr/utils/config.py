@@ -8,7 +8,10 @@ from typing import Any
 from omegaconf import OmegaConf
 
 
-def load_config(config_paths: list[str] | None, overrides: list[str] | None = None) -> dict[str, Any]:
+def load_config(
+    config_paths: list[str] | None,
+    overrides: list[str] | None = None,
+) -> dict[str, Any]:
     config_paths = config_paths or ["configs/train.yaml"]
     cfg = OmegaConf.create()
     for path in config_paths:

@@ -4,19 +4,33 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
 *.egg-info/
+.coverage
+htmlcov/
 
 data/
 !src/mpb_latex_ocr/data
 outputs/
 mlruns/
 wandb/
+runs/
 
 *.ckpt
 *.pt
 *.pth
 *.onnx
+*.safetensors
 
 .env
+.env.*
+!.env.example
 .DS_Store
 Thumbs.db
+
+repomix-output.xml
+repomix-output-*.xml
+
+# Graphify generated knowledge graph. Rebuild locally after code changes.
+graphify-out/

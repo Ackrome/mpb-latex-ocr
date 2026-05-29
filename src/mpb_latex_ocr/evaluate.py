@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -92,7 +93,7 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         images = batch["pixel_values"].to(args.device)
         generated = module.model.generate(images, max_length=args.max_generation_length)
         predictions = [tokenizer.decode(row.tolist()) for row in generated.cpu()]
-        targets = [tokenizer.decode(row.tolist()) for row in batch["labels"]]
+        targets = target_texts_from_batch(batch)
 
         for sample_id, image_path, prediction, target in zip(
             batch["sample_id"],
@@ -145,7 +146,7 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
             rows.append(row)
             cdm_rows.append(
                 {
-                    "img_id": str(sample_id),
+                    "img_id": make_cdm_img_id(sample_id, image_path, len(cdm_rows)),
                     "gt": target,
                     "pred": prediction,
                 }
@@ -184,11 +185,26 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
                 / max(1, len(prediction_rendered_values)),
                 "target_render_success": sum(target_rendered_values)
                 / max(1, len(target_rendered_values)),
-                "pair_render_success": sum(pair_rendered_values) / max(1, len(pair_rendered_values)),
+                "pair_render_success": sum(pair_rendered_values)
+                / max(1, len(pair_rendered_values)),
             }
         )
 
     return metrics
+
+
+def make_cdm_img_id(sample_id: str | None, image_path: str | None, index: int) -> str:
+    raw = str(sample_id or "").strip()
+    if not raw:
+        raw = Path(str(image_path)).stem if image_path else f"sample_{index:06d}"
+    if "/" in raw or "\\" in raw:
+        raw = Path(raw).stem
+    raw = re.sub(r"[^A-Za-z0-9_.-]+", "_", raw).strip("._")
+    return raw or f"sample_{index:06d}"
+
+
+def target_texts_from_batch(batch: dict[str, Any]) -> list[str]:
+    return [normalize_latex(text) for text in batch["latex"]]
 
 
 if __name__ == "__main__":

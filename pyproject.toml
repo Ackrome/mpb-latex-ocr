@@ -20,6 +20,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+detector = [
+  "ultralytics>=8.4.0",
+  "opencv-python-headless>=4.9.0",
+  "pyyaml>=6.0",
+]
 dev = [
   "pytest>=8.0",
   "ruff>=0.8",
@@ -29,8 +34,14 @@ dev = [
 latex-ocr-train = "mpb_latex_ocr.train:main"
 latex-ocr-evaluate = "mpb_latex_ocr.evaluate:main"
 latex-ocr-predict = "mpb_latex_ocr.predict:main"
+latex-ocr-detect = "mpb_latex_ocr.detect:main"
+latex-ocr-detect-train = "mpb_latex_ocr.detect_train:main"
+latex-ocr-page-predict = "mpb_latex_ocr.page_predict:main"
 latex-ocr-make-toy-data = "mpb_latex_ocr.make_toy_data:main"
 latex-ocr-prepare-manifest = "mpb_latex_ocr.prepare_manifest:main"
+latex-ocr-score-predictions = "mpb_latex_ocr.score_predictions:main"
+latex-ocr-export-prediction-samples = "mpb_latex_ocr.export_prediction_samples:main"
+latex-ocr-plot-mlruns = "mpb_latex_ocr.plot_mlruns:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

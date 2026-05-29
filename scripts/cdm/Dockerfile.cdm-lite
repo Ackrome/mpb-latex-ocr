@@ -1,0 +1,25 @@
+FROM python:3.8-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+WORKDIR /code
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        git \
+        nodejs \
+        npm \
+        imagemagick \
+        ghostscript \
+        poppler-utils \
+        texlive-latex-base \
+        texlive-latex-extra \
+        texlive-fonts-recommended \
+        texlive-science \
+        cm-super \
+    && sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml || true \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY . /code
+
+RUN python -m pip install --no-cache-dir --upgrade pip \
+    && python -m pip install --no-cache-dir "numpy<2.0.0" tqdm matplotlib opencv-python "scikit-image<=0.20.0"

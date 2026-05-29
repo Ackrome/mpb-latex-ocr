@@ -1,0 +1,9 @@
+model:
+  d_model: 256
+  encoder_channels: [48, 96, 192]
+  encoder_depths: [2, 2, 3]
+  decoder_layers: 4
+  nhead: 8
+  dim_feedforward: 1024
+  dropout: 0.12
+  max_seq_len: 256

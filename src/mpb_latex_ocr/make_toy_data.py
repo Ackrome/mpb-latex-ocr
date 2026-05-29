@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import argparse
 import csv
-from io import BytesIO
 import random
+from io import BytesIO
 from pathlib import Path
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg

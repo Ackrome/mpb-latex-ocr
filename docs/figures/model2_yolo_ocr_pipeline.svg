@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1240" viewBox="0 0 1800 1240" role="img" aria-labelledby="title desc">
+  <title id="title">Model 2: YOLO formula detector plus model1 OCR pipeline</title>
+  <desc id="desc">Scientific-style schematic of the page-level YOLO formula detection pipeline that crops detected formula regions and feeds them to the preserved model1 OCR recognizer.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,8 L11,4 z" fill="#1f2937"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,8 L11,4 z" fill="#15803d"/>
+    </marker>
+    <style>
+      .bg { fill: #ffffff; }
+      .title { font: 700 31px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 400 15px Arial, sans-serif; fill: #475569; }
+      .panel-title { font: 700 18px Arial, sans-serif; fill: #111827; }
+      .panel-label { font: 700 14px Arial, sans-serif; fill: #0f172a; }
+      .text { font: 400 12.5px Arial, sans-serif; fill: #334155; }
+      .small { font: 400 11.5px Arial, sans-serif; fill: #475569; }
+      .mono { font: 400 12px Consolas, Menlo, monospace; fill: #1f2937; }
+      .math { font: italic 14px Georgia, serif; fill: #111827; }
+      .panel { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1.4; }
+      .page { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.4; }
+      .det { fill: #ecfeff; stroke: #0891b2; stroke-width: 1.4; }
+      .head { fill: #f0fdfa; stroke: #0f766e; stroke-width: 1.4; }
+      .crop { fill: #f0fdf4; stroke: #16a34a; stroke-width: 1.4; }
+      .ocr { fill: #fff7ed; stroke: #ea580c; stroke-width: 1.4; }
+      .out { fill: #faf5ff; stroke: #9333ea; stroke-width: 1.4; }
+      .train { fill: #fefce8; stroke: #ca8a04; stroke-width: 1.4; }
+      .note { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.1; }
+      .arrow { stroke: #1f2937; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .arrow-green { stroke: #15803d; stroke-width: 2.2; fill: none; marker-end: url(#arrowGreen); }
+      .dash { stroke: #64748b; stroke-width: 1.5; fill: none; stroke-dasharray: 6 5; marker-end: url(#arrow); }
+      .boxline { stroke: #dc2626; stroke-width: 2.1; fill: none; }
+      .boxline2 { stroke: #16a34a; stroke-width: 2.1; fill: none; }
+      .thin { stroke: #cbd5e1; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1800" height="1240"/>
+  <text x="48" y="55" class="title">Model 2: Page-Level Formula Detection + Preserved Model1 OCR</text>
+  <text x="48" y="82" class="subtitle">Model2 is a pipeline model: YOLO detects formula regions in full pages, the cropper orders and pads regions, and model1 recognizes each crop.</text>
+  <text x="48" y="106" class="small">Design references: YOLO single-stage object detection [Redmon et al., 2016]; Ultralytics YOLO26 training/prediction API and anchor-free detection workflow [Ultralytics Docs].</text>
+
+  <!-- Top inference pipeline -->
+  <rect x="48" y="138" width="1704" height="476" rx="8" class="panel"/>
+  <text x="68" y="171" class="panel-title">A. Inference graph: full page -> formula boxes -> ordered crops -> LaTeX strings</text>
+
+  <rect x="82" y="218" width="210" height="275" rx="6" class="page"/>
+  <text x="107" y="248" class="panel-label">Full page or photo</text>
+  <rect x="112" y="278" width="150" height="178" rx="3" class="note"/>
+  <path d="M130 315 H242 M130 341 H220 M130 371 H246 M130 430 H236" class="thin"/>
+  <rect x="132" y="384" width="92" height="26" class="boxline"/>
+  <rect x="151" y="330" width="73" height="22" class="boxline2"/>
+  <text x="107" y="520" class="mono">image_path(s)</text>
+
+  <line x1="292" y1="356" x2="352" y2="356" class="arrow"/>
+
+  <rect x="354" y="218" width="340" height="275" rx="6" class="det"/>
+  <text x="382" y="248" class="panel-label">YOLO26 formula detector</text>
+  <rect x="384" y="286" width="86" height="54" rx="4" class="note"/>
+  <text x="407" y="318" class="small">Backbone</text>
+  <line x1="470" y1="313" x2="506" y2="313" class="arrow"/>
+  <rect x="508" y="286" width="70" height="54" rx="4" class="note"/>
+  <text x="529" y="318" class="small">Neck</text>
+  <line x1="578" y1="313" x2="614" y2="313" class="arrow"/>
+  <rect x="616" y="286" width="52" height="54" rx="4" class="head"/>
+  <text x="628" y="310" class="small">Head</text>
+  <text x="624" y="329" class="small">boxes</text>
+  <text x="384" y="378" class="text">Single-stage detector predicts formula</text>
+  <text x="384" y="402" class="text">bounding boxes and confidences.</text>
+  <text x="384" y="431" class="mono">conf, IoU, image_size</text>
+  <text x="384" y="455" class="small">Lazy optional dependency: ultralytics</text>
+
+  <line x1="694" y1="356" x2="754" y2="356" class="arrow"/>
+
+  <rect x="756" y="218" width="328" height="275" rx="6" class="crop"/>
+  <text x="786" y="248" class="panel-label">Detection post-processing</text>
+  <text x="786" y="286" class="text">1. Resolve page image paths</text>
+  <text x="786" y="314" class="text">2. Sort detections in reading order</text>
+  <text x="786" y="342" class="text">3. Expand and clamp boxes</text>
+  <text x="786" y="370" class="text">4. Save crop image files</text>
+  <text x="786" y="414" class="mono">bbox_xyxy -> crop_path</text>
+  <text x="786" y="440" class="small">row_tolerance, padding_px, padding_ratio</text>
+  <text x="786" y="466" class="small">Implemented in detection/crops.py</text>
+
+  <line x1="1084" y1="356" x2="1144" y2="356" class="arrow"/>
+
+  <rect x="1146" y="218" width="300" height="275" rx="6" class="ocr"/>
+  <text x="1176" y="248" class="panel-label">Model1 OCR recognizer</text>
+  <text x="1176" y="286" class="text">For each detected crop:</text>
+  <text x="1176" y="315" class="mono">crop -> CNN encoder</text>
+  <text x="1176" y="342" class="mono">visual memory -> decoder</text>
+  <text x="1176" y="369" class="mono">tokens -> normalized LaTeX</text>
+  <rect x="1180" y="411" width="220" height="42" rx="5" class="note"/>
+  <text x="1201" y="437" class="small">model1 weights are reused unchanged</text>
+
+  <line x1="1446" y1="356" x2="1506" y2="356" class="arrow"/>
+
+  <rect x="1508" y="218" width="205" height="275" rx="6" class="out"/>
+  <text x="1537" y="248" class="panel-label">Structured output</text>
+  <text x="1534" y="289" class="mono">predictions.jsonl</text>
+  <text x="1534" y="321" class="text">source image</text>
+  <text x="1534" y="345" class="text">bbox, confidence</text>
+  <text x="1534" y="369" class="text">crop path</text>
+  <text x="1534" y="393" class="text">LaTeX string</text>
+  <text x="1534" y="437" class="small">one row per formula region</text>
+
+  <text x="82" y="578" class="math">model2 output = {(page_i, bbox_j, crop_j, latex_j, confidence_j)} sorted by approximate reading order</text>
+
+  <!-- Training branch -->
+  <rect x="48" y="650" width="812" height="308" rx="8" class="panel"/>
+  <text x="68" y="682" class="panel-title">B. Detector training branch</text>
+  <rect x="82" y="724" width="210" height="152" rx="6" class="train"/>
+  <text x="109" y="754" class="panel-label">YOLO-format data</text>
+  <text x="109" y="786" class="mono">data.yaml</text>
+  <text x="109" y="812" class="text">train/val/test images</text>
+  <text x="109" y="836" class="text">labels: class cx cy w h</text>
+  <text x="109" y="860" class="small">names: [formula]</text>
+  <line x1="292" y1="800" x2="352" y2="800" class="arrow"/>
+
+  <rect x="354" y="724" width="210" height="152" rx="6" class="det"/>
+  <text x="382" y="754" class="panel-label">latex-ocr-detect-train</text>
+  <text x="382" y="786" class="mono">YOLO.train()</text>
+  <text x="382" y="812" class="text">weights: yolo26n.pt</text>
+  <text x="382" y="836" class="text">imgsz, epochs, batch</text>
+  <text x="382" y="860" class="small">configs/detection/yolo_formula.yaml</text>
+  <line x1="564" y1="800" x2="624" y2="800" class="arrow"/>
+
+  <rect x="626" y="724" width="194" height="152" rx="6" class="out"/>
+  <text x="654" y="754" class="panel-label">Detector weights</text>
+  <text x="654" y="786" class="mono">best.pt</text>
+  <text x="654" y="818" class="text">used by detect and</text>
+  <text x="654" y="842" class="text">page-predict CLIs</text>
+
+  <text x="82" y="928" class="small">Training the detector is independent of OCR model1 training. OCR checkpoints and tokenizers are not modified by YOLO detector training.</text>
+
+  <!-- Model boundary panel -->
+  <rect x="892" y="650" width="860" height="308" rx="8" class="panel"/>
+  <text x="912" y="682" class="panel-title">C. Model boundary and preservation rule</text>
+  <rect x="930" y="724" width="355" height="168" rx="6" class="ocr"/>
+  <text x="962" y="756" class="panel-label">Model1: crop-level OCR</text>
+  <text x="962" y="790" class="text">CNN visual encoder</text>
+  <text x="962" y="816" class="text">Transformer decoder</text>
+  <text x="962" y="842" class="text">LaTeX tokenizer and checkpoint</text>
+  <text x="962" y="872" class="mono">input: formula crop</text>
+
+  <rect x="1356" y="724" width="355" height="168" rx="6" class="crop"/>
+  <text x="1388" y="756" class="panel-label">Model2: page pipeline</text>
+  <text x="1388" y="790" class="text">YOLO formula detector</text>
+  <text x="1388" y="816" class="text">crop extraction and ordering</text>
+  <text x="1388" y="842" class="text">calls model1 on each crop</text>
+  <text x="1388" y="872" class="mono">input: page image(s)</text>
+  <line x1="1285" y1="808" x2="1354" y2="808" class="arrow-green"/>
+  <text x="1186" y="925" class="text">Model2 extends scope from crop recognition to page-level formula extraction without replacing model1.</text>
+
+  <!-- Bottom description -->
+  <rect x="48" y="995" width="1704" height="178" rx="8" class="panel"/>
+  <text x="68" y="1027" class="panel-title">Description for paper text</text>
+  <text x="68" y="1059" class="text">Model2 introduces a layout-analysis front end before the existing recognizer. A YOLO detector localizes formula regions in page images, returning class scores and</text>
+  <text x="68" y="1084" class="text">axis-aligned boxes. Each detection is expanded, clamped to image bounds, saved as a crop, and sorted by approximate reading order. The unchanged model1 OCR network</text>
+  <text x="68" y="1109" class="text">then independently decodes each crop into LaTeX. The resulting JSONL record preserves both recognition output and detector provenance: source image, bbox, confidence,</text>
+  <text x="68" y="1134" class="text">crop path, and predicted LaTeX. Detector training uses standard YOLO image/label folders and is isolated from OCR training.</text>
+  <text x="68" y="1165" class="small">References: Redmon et al. 2016, You Only Look Once; Ultralytics YOLO26 documentation for train/predict workflows. Internal files: detection/yolo.py, detection/crops.py, page_predict.py.</text>
+</svg>

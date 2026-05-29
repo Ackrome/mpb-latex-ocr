@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1180" viewBox="0 0 1800 1180" role="img" aria-labelledby="title desc">
+  <title id="title">Model 1: crop-level LaTeX OCR architecture</title>
+  <desc id="desc">Scientific-style schematic of the implemented crop-level CNN encoder and autoregressive Transformer decoder used for LaTeX OCR.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,8 L11,4 z" fill="#1f2937"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,8 L11,4 z" fill="#2563eb"/>
+    </marker>
+    <style>
+      .bg { fill: #ffffff; }
+      .title { font: 700 31px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 400 15px Arial, sans-serif; fill: #475569; }
+      .panel-title { font: 700 18px Arial, sans-serif; fill: #111827; }
+      .panel-label { font: 700 14px Arial, sans-serif; fill: #0f172a; }
+      .text { font: 400 12.5px Arial, sans-serif; fill: #334155; }
+      .small { font: 400 11.5px Arial, sans-serif; fill: #475569; }
+      .mono { font: 400 12px Consolas, Menlo, monospace; fill: #1f2937; }
+      .math { font: italic 14px Georgia, serif; fill: #111827; }
+      .panel { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1.4; }
+      .input { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.4; }
+      .cnn { fill: #ecfeff; stroke: #0891b2; stroke-width: 1.4; }
+      .memory { fill: #f0fdf4; stroke: #16a34a; stroke-width: 1.4; }
+      .tok { fill: #faf5ff; stroke: #9333ea; stroke-width: 1.4; }
+      .dec { fill: #fff7ed; stroke: #ea580c; stroke-width: 1.4; }
+      .loss { fill: #fefce8; stroke: #ca8a04; stroke-width: 1.4; }
+      .note { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.1; }
+      .arrow { stroke: #1f2937; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .arrow-blue { stroke: #2563eb; stroke-width: 2.2; fill: none; marker-end: url(#arrowBlue); }
+      .dash { stroke: #64748b; stroke-width: 1.5; fill: none; stroke-dasharray: 6 5; marker-end: url(#arrow); }
+      .grid { stroke: #94a3b8; stroke-width: 0.8; fill: none; }
+      .thin { stroke: #cbd5e1; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1800" height="1180"/>
+  <text x="48" y="55" class="title">Model 1: CNN Encoder + Autoregressive Transformer Decoder for Formula OCR</text>
+  <text x="48" y="82" class="subtitle">Crop-level model. A single formula crop is encoded into visual memory tokens, then decoded into normalized LaTeX markup.</text>
+  <text x="48" y="106" class="small">Design references: image-to-markup encoder-decoder formulation [Deng et al., ICML 2017]; Transformer decoder attention stack [Vaswani et al., NeurIPS 2017].</text>
+
+  <!-- Panel A -->
+  <rect x="48" y="138" width="350" height="255" rx="8" class="panel"/>
+  <text x="68" y="168" class="panel-title">A. Task and input representation</text>
+  <rect x="78" y="198" width="135" height="76" rx="4" class="input"/>
+  <text x="95" y="224" class="panel-label">Formula crop</text>
+  <text x="95" y="248" class="mono">image: H x W</text>
+  <path d="M90 300 H198 M90 315 H178 M90 330 H205 M90 345 H160" class="grid"/>
+  <text x="235" y="220" class="text">Convert to grayscale</text>
+  <text x="235" y="244" class="text">Resize with aspect ratio</text>
+  <text x="235" y="268" class="text">Pad to fixed canvas</text>
+  <text x="235" y="292" class="mono">B x 1 x 128 x 512</text>
+  <text x="78" y="368" class="math">p(y|x) = product_t p(y_t | y_&lt;t, x)</text>
+
+  <!-- Panel B -->
+  <rect x="430" y="138" width="780" height="255" rx="8" class="panel"/>
+  <text x="450" y="168" class="panel-title">B. Visual encoder: compact CNN -> 2D feature grid -> visual memory</text>
+
+  <rect x="462" y="208" width="116" height="82" rx="5" class="cnn"/>
+  <text x="482" y="235" class="panel-label">Conv 1</text>
+  <text x="478" y="259" class="mono">1 -> 32</text>
+  <text x="477" y="278" class="small">s=2, BN, GELU</text>
+  <line x1="578" y1="249" x2="613" y2="249" class="arrow"/>
+
+  <rect x="615" y="208" width="116" height="82" rx="5" class="cnn"/>
+  <text x="635" y="235" class="panel-label">Conv 2</text>
+  <text x="631" y="259" class="mono">32 -> 64</text>
+  <text x="630" y="278" class="small">s=2, BN, GELU</text>
+  <line x1="731" y1="249" x2="766" y2="249" class="arrow"/>
+
+  <rect x="768" y="208" width="116" height="82" rx="5" class="cnn"/>
+  <text x="788" y="235" class="panel-label">Conv 3</text>
+  <text x="783" y="259" class="mono">64 -> 128</text>
+  <text x="783" y="278" class="small">s=2, BN, GELU</text>
+  <line x1="884" y1="249" x2="919" y2="249" class="arrow"/>
+
+  <rect x="921" y="208" width="126" height="82" rx="5" class="cnn"/>
+  <text x="940" y="235" class="panel-label">Proj conv</text>
+  <text x="936" y="259" class="mono">128 -> 256</text>
+  <text x="936" y="278" class="small">s=1 + Dropout</text>
+  <line x1="1047" y1="249" x2="1084" y2="249" class="arrow"/>
+
+  <rect x="1086" y="197" width="104" height="104" rx="5" class="memory"/>
+  <text x="1106" y="225" class="panel-label">Flatten</text>
+  <text x="1100" y="250" class="mono">16 x 64</text>
+  <text x="1100" y="274" class="mono">= 1024</text>
+  <text x="474" y="331" class="mono">B x 32 x 64 x 256 -> B x 64 x 32 x 128 -> B x 128 x 16 x 64 -> B x 256 x 16 x 64</text>
+  <text x="474" y="359" class="mono">visual memory M = B x 1024 x 256</text>
+
+  <!-- Panel C -->
+  <rect x="1242" y="138" width="510" height="255" rx="8" class="panel"/>
+  <text x="1262" y="168" class="panel-title">C. Autoregressive target prefix</text>
+  <rect x="1275" y="208" width="150" height="75" rx="5" class="tok"/>
+  <text x="1296" y="235" class="panel-label">LaTeX tokens</text>
+  <text x="1292" y="260" class="mono">[BOS, y1, ...]</text>
+  <line x1="1425" y1="246" x2="1465" y2="246" class="arrow"/>
+  <rect x="1467" y="208" width="160" height="75" rx="5" class="tok"/>
+  <text x="1486" y="235" class="panel-label">Token + pos</text>
+  <text x="1484" y="260" class="mono">B x T x 256</text>
+  <text x="1275" y="326" class="text">Regex tokenizer with BOS/EOS/PAD/UNK.</text>
+  <text x="1275" y="350" class="text">Learned absolute target position embeddings.</text>
+
+  <!-- Main decoder panel -->
+  <rect x="48" y="430" width="1120" height="398" rx="8" class="panel"/>
+  <text x="68" y="462" class="panel-title">D. Transformer decoder layer stack (4x pre-norm)</text>
+
+  <rect x="88" y="510" width="176" height="235" rx="7" class="dec"/>
+  <text x="112" y="540" class="panel-label">Decoder layer k</text>
+  <rect x="113" y="565" width="126" height="36" rx="4" class="note"/>
+  <text x="139" y="588" class="small">LayerNorm</text>
+  <rect x="113" y="613" width="126" height="42" rx="4" class="note"/>
+  <text x="125" y="639" class="small">Masked self-attn</text>
+  <rect x="113" y="667" width="126" height="42" rx="4" class="note"/>
+  <text x="125" y="693" class="small">Cross-attn to M</text>
+  <rect x="113" y="721" width="126" height="42" rx="4" class="note"/>
+  <text x="128" y="747" class="small">FFN 256 -> 1024</text>
+
+  <line x1="264" y1="628" x2="334" y2="628" class="arrow"/>
+  <rect x="336" y="537" width="198" height="184" rx="7" class="dec"/>
+  <text x="363" y="566" class="panel-label">Stack repeated 4 times</text>
+  <text x="363" y="597" class="mono">d_model = 256</text>
+  <text x="363" y="621" class="mono">heads = 8</text>
+  <text x="363" y="645" class="mono">FFN = 1024</text>
+  <text x="363" y="669" class="mono">dropout = 0.1</text>
+  <text x="363" y="693" class="mono">norm_first = true</text>
+
+  <path d="M1138 301 C1138 380 698 410 474 523" class="dash"/>
+  <text x="702" y="426" class="small">visual memory M supplies keys and values to cross-attention</text>
+  <path d="M1547 283 C1547 380 470 403 175 509" class="dash"/>
+  <text x="1102" y="426" class="small">target prefix supplies decoder queries</text>
+
+  <line x1="534" y1="628" x2="600" y2="628" class="arrow"/>
+  <rect x="602" y="552" width="165" height="152" rx="7" class="dec"/>
+  <text x="632" y="584" class="panel-label">LayerNorm</text>
+  <text x="629" y="619" class="panel-label">Linear head</text>
+  <text x="629" y="645" class="mono">256 -> |V|</text>
+  <text x="629" y="671" class="small">current |V| = 543</text>
+
+  <line x1="767" y1="628" x2="832" y2="628" class="arrow"/>
+  <rect x="834" y="552" width="285" height="152" rx="7" class="loss"/>
+  <text x="864" y="584" class="panel-label">Token logits and objective</text>
+  <text x="864" y="613" class="mono">logits: B x T x |V|</text>
+  <text x="864" y="641" class="mono">loss = CE(next_token)</text>
+  <text x="864" y="669" class="small">teacher forcing; PAD positions ignored</text>
+
+  <text x="88" y="790" class="math">inference: y_t = argmax softmax(f_theta(y_&lt;t, M)) until EOS or max length</text>
+
+  <!-- Panel E -->
+  <rect x="1200" y="430" width="552" height="398" rx="8" class="panel"/>
+  <text x="1220" y="462" class="panel-title">E. Reproducible implementation summary</text>
+  <rect x="1232" y="500" width="496" height="236" rx="6" class="note"/>
+  <line x1="1232" y1="540" x2="1728" y2="540" class="thin"/>
+  <line x1="1490" y1="500" x2="1490" y2="736" class="thin"/>
+  <text x="1254" y="525" class="panel-label">Component</text>
+  <text x="1512" y="525" class="panel-label">Current value</text>
+  <text x="1254" y="568" class="text">Input canvas</text>
+  <text x="1512" y="568" class="mono">1 x 128 x 512</text>
+  <text x="1254" y="601" class="text">Visual tokens</text>
+  <text x="1512" y="601" class="mono">1024 x 256</text>
+  <text x="1254" y="634" class="text">Decoder</text>
+  <text x="1512" y="634" class="mono">4 layers, 8 heads</text>
+  <text x="1254" y="667" class="text">Max length</text>
+  <text x="1512" y="667" class="mono">256 tokens</text>
+  <text x="1254" y="700" class="text">Parameters</text>
+  <text x="1512" y="700" class="mono">5.01M at |V|=543</text>
+
+  <rect x="1232" y="765" width="496" height="42" rx="5" class="input"/>
+  <text x="1254" y="791" class="text">Scope: recognizes cropped formulas only; no page layout analysis in model1.</text>
+
+  <!-- Bottom caption -->
+  <rect x="48" y="875" width="1704" height="238" rx="8" class="panel"/>
+  <text x="68" y="907" class="panel-title">Description for paper text</text>
+  <text x="68" y="939" class="text">Model1 is an attention-based image-to-sequence recognizer for already-cropped mathematical expressions. The image encoder is deliberately small: three stride-2</text>
+  <text x="68" y="964" class="text">convolutional stages followed by a projection convolution produce a 16 x 64 spatial grid. Flattening this grid gives 1024 visual memory tokens, each with width 256.</text>
+  <text x="68" y="989" class="text">A causal Transformer decoder consumes the target prefix and performs masked self-attention over prior LaTeX tokens plus cross-attention over all visual memory tokens.</text>
+  <text x="68" y="1014" class="text">Training minimizes next-token cross-entropy with teacher forcing; validation reports exact match and normalized edit distance after conservative LaTeX normalization.</text>
+  <text x="68" y="1050" class="small">Internal file: src/mpb_latex_ocr/models/encoder_decoder.py. This is model1 and should remain preserved when model2 variants are added.</text>
+  <text x="68" y="1084" class="small">References: Deng et al. 2017, Image-to-Markup Generation with Coarse-to-Fine Attention; Vaswani et al. 2017, Attention Is All You Need.</text>
+</svg>

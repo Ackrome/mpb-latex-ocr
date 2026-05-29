@@ -15,6 +15,7 @@ REQUIRED_PATHS = [
     "src/mpb_latex_ocr/data/tokenizer.py",
     "src/mpb_latex_ocr/models/lightning_module.py",
     "src/mpb_latex_ocr/prepare_manifest.py",
+    "src/mpb_latex_ocr/kaggle_model2_prepare.py",
     "configs/train.yaml",
     "configs/hardware/kaggle.yaml",
     "configs/datasets/kaggle_manifest.yaml",

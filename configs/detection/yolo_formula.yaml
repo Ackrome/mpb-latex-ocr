@@ -1,0 +1,30 @@
+# YOLO formula-region detector training template.
+#
+# This trains a page-level detector that finds formula regions. The existing
+# crop-level OCR model remains unchanged and consumes the detector's cropped
+# outputs.
+
+data:
+  # YOLO data.yaml with train/val/test image folders and names: ["formula"].
+  yaml_path: data/formula_detector/data.yaml
+
+model:
+  weights: yolo26n.pt
+  image_size: 960
+
+train:
+  epochs: 50
+  batch_size: 8
+  patience: 15
+  device: auto
+  workers: 4
+  seed: 42
+  output_dir: outputs/detection/yolo
+  run_name: formula_regions
+
+detect:
+  confidence: 0.25
+  iou: 0.45
+  crop_padding_px: 4
+  crop_padding_ratio: 0.02
+  row_tolerance: 24.0

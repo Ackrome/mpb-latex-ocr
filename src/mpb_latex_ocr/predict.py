@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Iterable
 from pathlib import Path
 
 import torch
@@ -43,16 +44,40 @@ def main(argv: list[str] | None = None) -> None:
 
 @torch.inference_mode()
 def predict(args: argparse.Namespace) -> list[dict[str, str]]:
-    tokenizer = LatexTokenizer.load(args.tokenizer)
-    module = LatexOCRModule.load_from_checkpoint(args.checkpoint, tokenizer=tokenizer)
-    module.eval().to(args.device)
-    transform = FormulaImageTransform(args.image_height, args.image_width, augment=False)
+    image_paths = resolve_images(args.image)
+    return predict_image_paths(
+        checkpoint=args.checkpoint,
+        tokenizer_path=args.tokenizer,
+        image_paths=image_paths,
+        image_height=args.image_height,
+        image_width=args.image_width,
+        max_generation_length=args.max_generation_length,
+        device=args.device,
+    )
+
+
+@torch.inference_mode()
+def predict_image_paths(
+    *,
+    checkpoint: str | Path,
+    tokenizer_path: str | Path,
+    image_paths: Iterable[str | Path],
+    image_height: int = 128,
+    image_width: int = 512,
+    max_generation_length: int = 256,
+    device: str = "cuda" if torch.cuda.is_available() else "cpu",
+) -> list[dict[str, str]]:
+    tokenizer = LatexTokenizer.load(tokenizer_path)
+    module = LatexOCRModule.load_from_checkpoint(checkpoint, tokenizer=tokenizer)
+    module.eval().to(device)
+    transform = FormulaImageTransform(image_height, image_width, augment=False)
 
     rows: list[dict[str, str]] = []
-    for image_path in resolve_images(args.image):
+    for image_path in image_paths:
+        image_path = Path(image_path)
         image = Image.open(image_path)
-        pixel_values = transform(image).unsqueeze(0).to(args.device)
-        generated = module.model.generate(pixel_values, max_length=args.max_generation_length)
+        pixel_values = transform(image).unsqueeze(0).to(device)
+        generated = module.model.generate(pixel_values, max_length=max_generation_length)
         latex = normalize_latex(tokenizer.decode(generated[0].detach().cpu().tolist()))
         rows.append({"image_path": str(image_path), "latex": latex})
     return rows
@@ -64,7 +89,9 @@ def resolve_images(paths: list[str]) -> list[Path]:
         path = Path(raw_path)
         if path.is_dir():
             images.extend(
-                child for child in sorted(path.iterdir()) if child.suffix.lower() in IMAGE_EXTENSIONS
+                child
+                for child in sorted(path.iterdir())
+                if child.suffix.lower() in IMAGE_EXTENSIONS
             )
         elif path.suffix.lower() in IMAGE_EXTENSIONS:
             images.append(path)
