@@ -39,6 +39,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--detector-image-size", type=int, default=960)
     parser.add_argument("--detector-confidence", type=float, default=0.25)
     parser.add_argument("--detector-iou", type=float, default=0.45)
+    parser.add_argument("--detector-batch-size", type=int, default=1)
     parser.add_argument(
         "--detector-class-id",
         action="append",
@@ -94,6 +95,7 @@ def run_page_prediction(
         image_size=args.detector_image_size,
         confidence=args.detector_confidence,
         iou=args.detector_iou,
+        batch_size=getattr(args, "detector_batch_size", 1),
         device=detector_device,
         class_ids=getattr(args, "detector_class_ids", None),
         class_names=getattr(args, "detector_class_names", None),

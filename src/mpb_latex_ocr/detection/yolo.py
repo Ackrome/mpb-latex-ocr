@@ -15,6 +15,7 @@ def detect_images(
     image_size: int = 960,
     confidence: float = 0.25,
     iou: float = 0.45,
+    batch_size: int = 1,
     device: str | None = None,
     class_ids: list[int] | tuple[int, ...] | set[int] | None = None,
     class_names: list[str] | tuple[str, ...] | set[str] | None = None,
@@ -30,6 +31,7 @@ def detect_images(
         "imgsz": image_size,
         "conf": confidence,
         "iou": iou,
+        "batch": max(1, int(batch_size)),
         "save": False,
         "verbose": verbose,
     }

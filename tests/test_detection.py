@@ -58,6 +58,7 @@ def test_page_prediction_composes_detector_crops_and_ocr(tmp_path: Path):
         detector_image_size=960,
         detector_confidence=0.25,
         detector_iou=0.45,
+        detector_batch_size=1,
         device="cpu",
         crop_padding_px=0,
         crop_padding_ratio=0.0,
@@ -69,6 +70,7 @@ def test_page_prediction_composes_detector_crops_and_ocr(tmp_path: Path):
 
     def fake_detect_fn(**kwargs):
         assert kwargs["weights"] == "detector.pt"
+        assert kwargs["batch_size"] == 1
         return {
             image_path: [
                 Detection(image_path, (5, 5, 30, 25), 0.88, class_id=0, class_name="formula")
@@ -133,21 +135,61 @@ def test_detect_images_filters_by_class_name(monkeypatch, tmp_path: Path):
     class FakeYOLO:
         def __init__(self, weights):
             self.weights = weights
+            self.kwargs = None
 
         def predict(self, **kwargs):
+            self.kwargs = kwargs
             return [FakeResult()]
 
-    monkeypatch.setattr(yolo_module, "_load_yolo_class", lambda: FakeYOLO)
+    yolo_instances = []
+
+    class TrackingFakeYOLO(FakeYOLO):
+        def __init__(self, weights):
+            super().__init__(weights)
+            yolo_instances.append(self)
+
+    monkeypatch.setattr(yolo_module, "_load_yolo_class", lambda: TrackingFakeYOLO)
 
     rows = yolo_module.detect_images(
         weights="detector.pt",
         image_paths=[image_path],
+        batch_size=1,
         class_names=["equation"],
     )
 
+    assert yolo_instances[0].kwargs["batch"] == 1
     assert len(rows[image_path]) == 1
     assert rows[image_path][0].class_name == "Equation"
     assert rows[image_path][0].bbox_xyxy == (1.0, 2.0, 30.0, 40.0)
+
+
+def test_train_detector_forwards_multi_gpu_device_string(monkeypatch, tmp_path: Path):
+    yolo_instances = []
+
+    class FakeResults:
+        save_dir = tmp_path / "runs" / "dual"
+
+    class FakeYOLO:
+        def __init__(self, weights):
+            self.weights = weights
+            self.kwargs = None
+            yolo_instances.append(self)
+
+        def train(self, **kwargs):
+            self.kwargs = kwargs
+            return FakeResults()
+
+    monkeypatch.setattr(yolo_module, "_load_yolo_class", lambda: FakeYOLO)
+
+    best = yolo_module.train_detector(
+        data_yaml=tmp_path / "data.yaml",
+        output_dir=tmp_path / "runs",
+        run_name="dual",
+        device="0,1",
+    )
+
+    assert yolo_instances[0].kwargs["device"] == "0,1"
+    assert best == tmp_path / "runs" / "dual" / "weights" / "best.pt"
 
 
 def test_numeric_page_predict_device_maps_to_torch_cuda_index():

@@ -18,6 +18,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--image-size", type=int, default=960)
     parser.add_argument("--confidence", type=float, default=0.25)
     parser.add_argument("--iou", type=float, default=0.45)
+    parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--device", default="auto")
     parser.add_argument(
         "--class-id",
@@ -54,6 +55,7 @@ def detect_and_crop(args: argparse.Namespace):
         image_size=args.image_size,
         confidence=args.confidence,
         iou=args.iou,
+        batch_size=args.batch_size,
         device=args.device,
         class_ids=args.class_ids,
         class_names=args.class_names,

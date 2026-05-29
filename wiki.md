@@ -373,10 +373,23 @@ RUN_MODEL2_PAGE_INFERENCE = True
 AUTO_DISCOVER_INPUTS = True
 AUTO_PREPARE_MODEL2_INPUTS = True
 AUTO_DOWNLOAD_DATASETS = False
+MODEL1_EPOCHS = 50
+MODEL1_EARLY_STOPPING = False
+MODEL1_TRAINER_DEVICES = GPU_COUNT if GPU_COUNT else "auto"
+MODEL1_TRAINER_STRATEGY = "ddp" if GPU_COUNT > 1 else "auto"
 DETECTOR_MODEL_WEIGHTS = "yolo26n.pt"
+DETECTOR_TRAIN_DEVICE = GPU_IDS if GPU_COUNT > 1 else ("0" if GPU_COUNT else "cpu")
+DETECTOR_INFERENCE_BATCH_SIZE = 1
+DETECTOR_PREVIEW_MAX_IMAGES = 24
 ```
 
 `AUTO_DOWNLOAD_DATASETS = False` is intentional for the attached-dataset workflow. Set it to `True` only if you want the notebook to try downloading missing public Kaggle datasets.
+
+The model1 OCR stage defaults to 50 epochs in this notebook path. Early stopping is disabled for model1 so the run does not silently stop after a short validation plateau.
+
+On Kaggle dual-T4 runtimes, the notebook now uses both GPUs for model1 training through Lightning DDP and passes `train.device=0,1` to Ultralytics YOLO training. Detector preview remains on one GPU with batch size 1 to avoid OOM. Full page inference splits work by default: detector on GPU 0 and OCR on GPU 1.
+
+Detector preview is intentionally limited to 24 validation images and detector inference defaults to batch size 1. This avoids Kaggle T4 CUDA OOM after detector training while still checking that boxes and crops are sensible.
 
 Manual overrides remain available for existing artifacts or different datasets:
 
@@ -872,6 +885,8 @@ latex-ocr-detect-train `
   train.device=0
 ```
 
+Use `train.device=0,1` on dual-GPU Kaggle runtimes when training the YOLO detector on both T4 devices.
+
 Detect formula regions and save crops without running OCR:
 
 ```powershell
@@ -905,6 +920,7 @@ Outputs:
 Tuning options:
 
 - `--detector-confidence`: raise it to reduce false positives, lower it to recover missed formulas
+- `--batch-size` for `latex-ocr-detect`, and `--detector-batch-size` for `latex-ocr-page-predict`: keep this at `1` on Kaggle T4 when using `--image-size 960`
 - `--crop-padding-px` and `--crop-padding-ratio`: add whitespace around detector boxes before OCR
 - `--row-tolerance`: controls top-to-bottom, left-to-right crop ordering for multi-formula pages
 - `--image-height` and `--image-width`: must match the OCR checkpoint's expected crop size
